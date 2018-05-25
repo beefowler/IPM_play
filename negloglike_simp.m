@@ -1,12 +1,18 @@
 
-function [nll] = negloglike_simp(Realsize, pars, Nobserved); 
+function [nll] = negloglike_simp(Realsize, pars, Nobserved, Nt0); 
 
 %% Run Projection / Simulation  
 
-%initialize output, start with initial population
-ny = Nobserved(:,1)' ; 
-Nday = Nobserved(:,1); 
-NdayProps = Nobserved(:,1) ./ trapz(Realsize, ny);
+%later, initialize output, start with initial population
+%ny = Nobserved(:,1)' ; 
+%Nday = Nobserved(:,1); 
+%NdayProps = Nobserved(:,1) ./ trapz(Realsize, ny);
+
+%for now let's just have it preset
+ny = Nt0;
+Nday = Nt0'; 
+NdayProps = Nday ./ trapz(Realsize, ny);
+
 
 %every count is ten minutes; 
 count = 1; 
@@ -26,28 +32,21 @@ end %while loop
 NdayProbs = NdayProps ./ sum(NdayProps); 
 
 % %% Calculate NegLogLike 
-% NdayProbs = NdayProbs*100; 
-% temp = NdayProbs .* Nobserved; 
-% ind = find(temp ~=0); 
-% temp = log(temp(ind)); 
-% nll = -sum(temp); 
-% 
-% keyboard 
+%Let's cut down size of Nobserved to scale probabilities larger
+%factor = sum(sum(Nobserved)) / 1000; 
+%Observed1000 = Nobserved / factor; 
 
+%try percentages of hourly populations instead of portions of all
+%observations. 
+Observed1000 = Nobserved ./ sum(Nobserved) * 100; 
 
-temp = Nobserved .* Nday; 
-temp = temp(find(temp~=0)); 
-temp = log(temp); 
-logL = sum(temp);  % log(prob*observed) summed for every bin and hour
-
-nll = -logL; %negative log likelihood to be minimized
-
+temp = Observed1000 .* log(NdayProbs); 
+nll = -sum(sum(temp(~isnan(temp)))); %negative log likelihood to be minimized
 
 
 if isnan(nll)
     keyboard; 
 end
  
-
 
 end 

@@ -7,8 +7,12 @@ function [nx] = TimeStep(ny, rs, pars, t)
 
 alpha = pars(1); 
 phi = pars(2); 
+G = pars(3); 
+b = pars(4); 
 
-s = (rs+.5).^10 ./ ((rs+.5).^10 + 1); %just choosing these parameters for now 
+%s = (rs+2).^10 ./ ((rs+2).^10 + 1); %just choosing these parameters for now 
+%s = (rs).^4 ./ ((rs).^4 + 35); %just choosing these parameters for now
+s = (rs).^6 ./ ((rs).^6 + 6000); %just choosing these parameters for now
 
 %Division 
 Alph1 = alpha; 
@@ -22,12 +26,27 @@ F = (f1 + f2) ./ rs;
 
 Div = F .* ny .* s; 
 
-%Growth 
+%Growth (AND STASIS)
 
-xminusy = ((rs)' * ones(1, length(rs))- (ones(length(rs),1)*(rs))); %Matrix with values of x - y for collumns y and rows x
-beeta = .1*sin(pi*t/24); %trying to mimic sunlight patterns 
+%growth will depend on bin indexing rather that Realsize so that large
+%cells can grow more easily than small cells. 
+binind = 1:length(rs); 
+binintervals = log2(rs(2)) - log2(rs(1)); 
 
-Hkern = heaviside(xminusy) .* 1./beeta .* exp(-abs(xminusy) ./ (beeta)); 
+binxminusy = ((binind)' * ones(1, length(rs))- (ones(length(rs),1)*(binind))); %Matrix with values of bin(x) - bin(y) for collumns y and rows x
+binxminusy(find(binxminusy<0))=0; 
+xminusyscaled = binxminusy ./ max(binxminusy); %convert to domain (0,1)
+xminusyscaled(find(isnan(xminusyscaled))) = 0; %remove NaNs
+
+a = G*sin(pi*t/24)+1; %trying to mimic sunlight patterns 
+%b = 5; 
+
+%Kumaraswamy distribution, scaled so it will integrate to 1 over rs. 
+Hkern = heaviside(xminusyscaled) .*a.*b.*xminusyscaled.^(a - 1).*(1 - xminusyscaled.^a).^(b - 1) ./ max(binxminusy) ./ (binintervals) ./ rs ./ log(2);
+
+Hkern(:,end) = zeros(1, length(rs)); %override last row to keep from NaNs. 
+Hkern(end, end) = 1; 
+
 Grow = (1-s) .* ny .* Hkern; 
 
 

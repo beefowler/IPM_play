@@ -28,18 +28,19 @@
 %Sample = Matrix of actual counts of cells in each size bin sampled from
 %NdayProps with sample size according to Nobserved 
 
-function [Nday, NdayProps, mu, Sample] = Simulate(Realsize, ny, pars, Einterp, Nobserved)
+function [Nday, NdayProps, mu, Sample] = Simulate(ny, Realsize, pars, Nobserved)
 
 %initialize output, start with initial population
 Nt0 = ny; 
 Nday = Nt0'; 
-NdayProps = Nt0' ./ trapz(Realsize, Nt0);
+NdayProps = Nday ./ trapz(Realsize, Nt0);
 
 %every count is ten minutes; 
 count = 1; 
 
 while count < 144 %go until 1 day has passed
-    Nt1 = TimeStep_g(Realsize, Nt0, pars, Einterp(count)); %project forward ten minutes
+    
+    Nt1 = TimeStep(Nt0, Realsize, pars, count/6); %project forward ten minutes
     if rem(count,6) == 0 %if we are at an hour
          Nday = [Nday Nt1']; %final output will be matrix of N at each hour
          NdayProps = [NdayProps (Nt1' ./ trapz(Realsize, Nt1))]; %proportion of population in each bin 
@@ -53,7 +54,7 @@ end %while loop
 %get sample from NdayProps only if Nobserved has been given
 if exist('Nobserved', 'var')
     NdayProbs = NdayProps ./ sum(NdayProps); 
-    Sample = mnrnd(sum(Nobserved)', NdayProbs')'; %sample from multinomial with probabilites of NdayProps
+    Sample = mnrnd(round(sum(Nobserved))', NdayProbs')'; %sample from multinomial with probabilites of NdayProps
 else 
     Sample = NaN; %just in case user asks for Sample output without giving sample sizes
 end 
